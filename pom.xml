@@ -4,7 +4,7 @@
 
   <groupId>org.urusso</groupId>
   <artifactId>easy-http-client</artifactId>
-  <version>1.0.0-SNAPSHOT</version>
+  <version>1.0.0</version>
   <packaging>jar</packaging>
 
   <name>EasyHttpClient</name>
