@@ -77,7 +77,7 @@ Currently supported HTTP methods:
 ---
 
 ## 🛑 Exceptions
-- `EasyHttpException`: instead of propagating the checked exceptions thrown by `HttpClient.send()` (such as `IOException` and `InterruptedException`), `EasyHttpClient` catches them and wraps them into a new unchecked exception.
+- `HttpCallException`: instead of propagating the checked exceptions thrown by `HttpClient.send()` (such as `IOException` and `InterruptedException`), `EasyHttpClient` catches them and wraps them into a new unchecked exception.
 - `MalformedUriException`: the URI creation throws an `IllegalArgumentException`. That is now wrapped into a more descriptive exception for more clarity and better debugging.
 
 ---

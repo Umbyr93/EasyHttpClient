@@ -2,19 +2,49 @@
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>org.urusso</groupId>
+  <groupId>io.github.urusso</groupId>
   <artifactId>easy-http-client</artifactId>
   <version>1.0.1-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <name>EasyHttpClient</name>
-  <url>http://maven.apache.org</url>
+  <url>https://github.com/Umbyr93/EasyHttpClient</url>
 
   <properties>
     <maven.compiler.source>21</maven.compiler.source>
     <maven.compiler.target>21</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <junit-jupiter.version>5.10.1</junit-jupiter.version>
+    <mockito.version>5.11.0</mockito.version>
+    <mockwebserver.version>4.12.0</mockwebserver.version>
   </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>${junit-jupiter.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-core</artifactId>
+      <version>${mockito.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-junit-jupiter</artifactId>
+      <version>${mockito.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.squareup.okhttp3</groupId>
+      <artifactId>mockwebserver</artifactId>
+      <version>${mockwebserver.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
 
   <build>
     <plugins>

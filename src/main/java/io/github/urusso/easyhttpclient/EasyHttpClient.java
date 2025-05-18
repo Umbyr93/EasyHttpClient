@@ -1,7 +1,7 @@
-package org.urusso;
+package io.github.urusso.easyhttpclient;
 
-import org.urusso.enums.MalformedUriException;
-import org.urusso.exception.EasyHttpException;
+import io.github.urusso.easyhttpclient.exception.HttpCallException;
+import io.github.urusso.easyhttpclient.exception.MalformedUriException;
 
 import java.io.IOException;
 import java.net.URI;
@@ -32,7 +32,7 @@ public class EasyHttpClient {
         try {
             return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         } catch (IOException | InterruptedException e) {
-            throw new EasyHttpException(e);
+            throw new HttpCallException(e);
         }
     }
 

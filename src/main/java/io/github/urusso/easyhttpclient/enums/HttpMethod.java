@@ -1,4 +1,4 @@
-package org.urusso.enums;
+package io.github.urusso.easyhttpclient.enums;
 
 public enum HttpMethod {
     GET,

@@ -1,6 +1,6 @@
-package org.urusso;
+package io.github.urusso.easyhttpclient;
 
-import org.urusso.enums.HttpMethod;
+import io.github.urusso.easyhttpclient.enums.HttpMethod;
 
 import java.util.HashMap;
 import java.util.Map;
