@@ -4,9 +4,11 @@ import org.urusso.exception.EasyHttpException;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.logging.Logger;
 
@@ -108,7 +110,7 @@ public class EasyHttpClient {
     private static String replacePathParams(String url, Map<String, String> pathParams) {
         for (Map.Entry<String, String> e : pathParams.entrySet()) {
             String paramToReplace = "{" + e.getKey() + "}";
-            url = url.replace(paramToReplace, e.getValue());
+            url = url.replace(paramToReplace, URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8));
         }
 
         return url;
@@ -131,7 +133,7 @@ public class EasyHttpClient {
             else
                 paramsToAdd.append("&");
 
-            paramsToAdd.append(e.getKey()).append("=").append(e.getValue());
+            paramsToAdd.append(e.getKey()).append("=").append(URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8));
             justStarted = false;
         }
 
