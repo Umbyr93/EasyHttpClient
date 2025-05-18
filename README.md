@@ -56,9 +56,11 @@ HttpResponse<String> response = new EasyHttpClient().send(request);
 ---
 
 ### Asynchronous Call: `sendAsync`
-This method sends the request asynchronously. It doesn't return the response directly, but when the response arrives, `EasyHttpClient` logs the URL, status code, and response body automatically.
+This method sends the request asynchronously and returns a `CompletableFuture`. \
+In the following example we wait for the response with the methd `get()`, but you can of course decide to just make the Http call and ignore it.
 ```java
-new EasyHttpClient().sendAsync(request);
+CompletableFuture<HttpResponse<String>> completableFuture = new EasyHttpClient().sendAsync(request);
+HttpResponse<String> response = completableFuture.get();
 ```
 
 ---
@@ -75,7 +77,8 @@ Currently supported HTTP methods:
 ---
 
 ## 🛑 Exceptions
-Instead of propagating the checked exceptions thrown by `HttpClient.send()` (such as `IOException` and `InterruptedException`), `EasyHttpClient` catches them and wraps them into a new unchecked exception: `EasyHttpException`.
+- `EasyHttpException`: instead of propagating the checked exceptions thrown by `HttpClient.send()` (such as `IOException` and `InterruptedException`), `EasyHttpClient` catches them and wraps them into a new unchecked exception.
+- `MalformedUriException`: the URI creation throws an `IllegalArgumentException`. That is now wrapped into a more descriptive exception for more clarity and better debugging.
 
 ---
 
