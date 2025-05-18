@@ -115,7 +115,7 @@ public class EasyHttpClient {
     private static String replacePathParams(String url, Map<String, String> pathParams) {
         for (Map.Entry<String, String> e : pathParams.entrySet()) {
             String paramToReplace = "{" + e.getKey() + "}";
-            url = url.replace(paramToReplace, URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8));
+            url = url.replace(paramToReplace, encode(e.getValue()));
         }
 
         return url;
@@ -138,7 +138,7 @@ public class EasyHttpClient {
             else
                 paramsToAdd.append("&");
 
-            paramsToAdd.append(e.getKey()).append("=").append(URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8));
+            paramsToAdd.append(e.getKey()).append("=").append(encode(e.getValue()));
             justStarted = false;
         }
 
@@ -184,5 +184,17 @@ public class EasyHttpClient {
         for (Map.Entry<String, String> e : headers.entrySet()) {
             builder.header(e.getKey(), e.getValue());
         }
+    }
+
+    /**
+     * Encodes URI parameters. <br>
+     * Since {@link URLEncoder} is actually made for HTML form encoding, everything is correctrly converted except for spaces.
+     * Spaces are converted to a '+' character, which is why this function replace them with '%20'
+     *
+     * @param param String parameter to encode
+     * @return String parameter encoded
+     */
+    private static String encode(String param) {
+        return URLEncoder.encode(param, StandardCharsets.UTF_8).replace("+", "%20");
     }
 }
