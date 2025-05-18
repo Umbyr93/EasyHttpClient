@@ -1,5 +1,6 @@
 package org.urusso;
 
+import org.urusso.enums.MalformedUriException;
 import org.urusso.exception.EasyHttpException;
 
 import java.io.IOException;
@@ -58,8 +59,13 @@ public class EasyHttpClient {
      * @return {@link HttpRequest}
      */
     private HttpRequest convertRequest(EasyHttpRequest easyReq) {
-        var requestBuilder = HttpRequest.newBuilder()
-                .uri(getUri(easyReq));
+        var requestBuilder = HttpRequest.newBuilder();
+
+        try {
+            requestBuilder.uri(getUri(easyReq));
+        } catch (IllegalArgumentException e) {
+            throw new MalformedUriException(e);
+        }
 
         setHttpMethod(requestBuilder, easyReq);
         setHeaders(requestBuilder, easyReq.getHeaders());
