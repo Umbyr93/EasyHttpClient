@@ -10,10 +10,9 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
-import java.util.logging.Logger;
+import java.util.concurrent.CompletableFuture;
 
 public class EasyHttpClient {
-    private static final Logger LOGGER = Logger.getLogger(EasyHttpClient.class.getName());
     private final HttpClient httpClient;
 
     public EasyHttpClient() {
@@ -37,19 +36,19 @@ public class EasyHttpClient {
     }
 
     /**
-     * The method that executes the HTTP call asynchronously
+     *
      *
      * @param easyReq {@link EasyHttpRequest} containing all the info to make the call
      */
-    public void sendAsync(EasyHttpRequest easyReq) {
+    /**
+     * The method that executes the HTTP call asynchronously
+     *
+     * @param easyReq {@link EasyHttpRequest} containing all the info to make the call
+     * @return {@link CompletableFuture} of the {@link HttpResponse}
+     */
+    public CompletableFuture<HttpResponse<String>> sendAsync(EasyHttpRequest easyReq) {
         HttpRequest request = convertRequest(easyReq);
-
-        httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                .thenAccept(resp ->
-                        LOGGER.info(String.format("Endpoint called: %s(%s)\nStatus code: %s\nResponse body: %s",
-                                request.uri().getHost() + request.uri().getPath(), easyReq.getHttpMethod().toString(),
-                                resp.statusCode(), resp.body())
-                        ));
+        return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString());
     }
 
     /**
@@ -86,7 +85,7 @@ public class EasyHttpClient {
      * Removes unnecessary end slashes. An URL like "blabla.com/api/user///" becomes "blabla.com/api/user"
      *
      * @param url String to manipulate
-     * @return fiex String URL
+     * @return fixed String URL
      */
     private static String removeEndSlashes(String url) {
         int substringEnd = url.length();
