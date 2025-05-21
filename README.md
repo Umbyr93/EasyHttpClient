@@ -72,7 +72,7 @@ EasyHttpRequest request = EasyHttpRequest.builder("https://blabla.org/countries/
 ## 🔄 Serialization
 To handle the `Json<->Object` parsing for both request and response, it's possible to implement the  interface `EasySerializer`.
 
-## Default Jackson Serializer
+### Default Jackson Serializer
 The library uses this `EasyJacksonSerializer` implementation by default:
 ```java
 public class EasyJacksonSerializer implements EasySerializer {
@@ -113,20 +113,22 @@ String[] array = list.toArray(new String[0]);
 
 ---
 
-## 📦 How to create an EasyHttpClient
-There are 2 ways to create an `EasyHttpClient` client:
-- Using the `defaultClient()` static method:
+## 📦 Creating the EasyHttpClient
+There are 2 ways to create an `EasyHttpClient` client.
+
+### Default Client
 ```java
 EasyHttpClient client = EasyHttpClient.defaultClient();
 ```
-- Using the builder that allows to set some custom options:
+
+### Client Builder
 ```java
 EasyHttpClient client = EasyHttpClient.builder()
         .connectTimeout(Duration.ofSeconds(5))
         .build();
 ```
 
-#### List of the builder options:
+#### Builder Options
 - .serializer(`EasySerializer`)
 - .connectTimeout(`Duration`)
 - .followRedirects(`HttpClient.Redirect`)
@@ -141,13 +143,14 @@ EasyHttpClient client = EasyHttpClient.builder()
 ---
 
 ## ⚡ Executing the HTTP Call
-### Synchronous call: `send`
-The method `send(EasyHttpRequest)` executes the HTTP call and returns a `HttpResponse<String>` with the response body as a String.
+### Synchronous
+#### `send`(EasyHttpRequest)
+Returns a `HttpResponse<String>` with the response body as a String.
 ```java
 HttpResponse<String> response = new EasyHttpClient().send(request);
 ```
-
-It's also possible to call the method `send(EasyHttpRequest, Class)` to specify the type of the expected response. Here's a few examples:
+#### `send`(EasyHttpRequest, Class)
+It's possible to specify the class type of the expected response. Here's a few examples:
 ```java
 HttpResponse<SampleResponse> response = new EasyHttpClient().send(request, SampleResponse.class);
 HttpResponse<SampleResponse[]> response = new EasyHttpClient().send(request, SampleResponse[].class);
@@ -156,13 +159,15 @@ HttpResponse<byte[]> response = new EasyHttpClient().send(request, byte[].class)
 
 ---
 
-### Asynchronous Call: `sendAsync`
-This method sends an asynchronous request and returns a `CompletableFuture<HttpResponse<String>>`.
+### Asynchronous
+#### `sendAsync`(EasyHttpRequest)
+Returns a `CompletableFuture<HttpResponse<String>>` with the body being a String.
 ```java
 CompletableFuture<HttpResponse<String>> completableFuture = new EasyHttpClient().sendAsync(request);
 ```
 
-As for the `send()`, there's also a `sendAsync(EasyHttpRequest, Class)` that accepts the class type of the response expected.
+#### `sendAsync`(EasyHttpRequest, Class)
+It's possible to specify the class type of the expected response. Here's a few examples:
 ```java
 CompletableFuture<HttpResponse<SampleResponse>> response = new EasyHttpClient().sendAsync(request, SampleResponse.class);
 CompletableFuture<HttpResponse<SampleResponse[]>> response = new EasyHttpClient().sendAsync(request, SampleResponse[].class);
