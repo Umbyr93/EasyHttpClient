@@ -1,72 +1,177 @@
 # EasyHttpClient
-An easy-to-use HTTP client built on top of **Java 11 HttpClient**.
+An easy-to-use HTTP client built on top of **Java 11 HttpClient**. Providing cleanier APIs to use it and rich features to extend it.
 
 ---
 
-## 🎯 Goal
-The goal of **EasyHttpClient** is to simplify the use of Java's `HttpClient`, especially when handling ***path parameters*** and ***query parameters***.
-
----
-
-## 🚀 Create the Request
-
-Here's how to create an **EasyHttpRequest** that contains all the necessary details:
+## 📝 Creating the Request
+### Params one by one
+Params can be set one by one, calling the specific methods multiple times:
 ```java
-var request = EasyHttpRequest.builder("https://blabla.org/countries/{country}/users/{user}")
+EasyHttpRequest request = EasyHttpRequest.builder("https://blabla.org/countries/{country}/users/{user}")
     .GET()
     .pathParam("country", "italy")
     .pathParam("user", "001")
     .queryParam("findDeleted", "true")
     .header("Authorization", "token")
+    .fragment("test")
     .build();
 ```
-You can see that `.pathParam()` was used multiple times. The same applies to `.queryParam()` and `.header()` — you can add as many as you need.
+**NOTE:** it is possible to call `fragment()` multiple times, but the value gets overwrited every time and the final value will be the last one set.
 
 ---
 
-Another way to set parameters is to pass a map containing them, using the respective `.map()` methods:
+### Params map
+Another way to set parameters is by passing a map containing them, using the respective `.map()` methods:
 ```java
-var request = EasyHttpRequest.builder("https://blabla.org/countries/{country}/users/{user}")
+EasyHttpRequest request = EasyHttpRequest.builder("https://blabla.org/countries/{country}/users/{user}")
     .GET()
     .pathMap(Map.of("country", "italy", "user", "001"))
     .queryMap(Map.of("findDeleted", "true"))
     .headerMap(Map.of("Authorization", "token"))
     .build();
 ```
+
+### Built-in Headers
+The request builder provides methods that allow to set the most common headers by just passing the value:
+```java
+EasyHttpRequest request = EasyHttpRequest.builder("https://blabla.org/countries")
+    .GET()
+    .authorization("token")
+    .contentType("application/json")
+    .build();
+```
+
+#### Available built-in Headers
+- Authorization
+- Content type
+- Accept
+- Accept encoding
+- Accept language
+- User agent
+- Cookie
+- Referer
+- Origin
+
 ---
 
-If you need to send a body for like a `POST` call, use the `.body()` method that accepts a `String`:
+### Request Body
+To send a body for like a `POST` call, there's the `.body(Data, Class)` method that accepts the data and the class type:
 ```java
-var request = EasyHttpRequest.builder("https://blabla.org/countries/{country}/users/")
+public record SampleRequest(String username){}
+```
+```java
+EasyHttpRequest request = EasyHttpRequest.builder("https://blabla.org/countries/{country}/users/")
     .POST()
     .pathMap(Map.of("country", "italy"))
-    .body("{\"userName\":\"test\"}")
+    .body("{\"username\":\"test\"}", SampleRequest.class)
     .build();
 ```
 
 ---
 
+## 🔄 Serialization
+To handle the `Json<->Object` parsing for both request and response, it's possible to implement the  interface `EasySerializer`.
+
+## Default Jackson Serializer
+The library uses this `EasyJacksonSerializer` implementation by default:
+```java
+public class EasyJacksonSerializer implements EasySerializer {
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    @Override
+    public <T> String serialize(T object) throws IOException {
+        return MAPPER.writeValueAsString(object);
+    }
+
+    @Override
+    public <T> T deserialize(String data, Class<T> clazz) throws IOException {
+        return MAPPER.readValue(data, clazz);
+    }
+}
+```
+
+### Collections Parsing
+Parsing to and from `Collection` is not supported yet. The main reasons are the quite rigid system that Java HttpClient uses for parsing and type erasure.
+<br><br>
+Currently, the only way is to pass and get an `Array of Objects`. Here's some examples to help with this conversion until this feature gets added:
+
+`Array -> List (Unmodifiable)`
+```java
+String[] array = {"a", "b", "c"};
+List<String> list = List.of(array);
+```
+`Array -> List (Modifiable)`
+```java
+String[] array = {"a", "b", "c"};
+List<String> list = new ArrayList<>(List.of(array));
+```
+`List -> Array`
+```java
+List<String> list = List.of("a", "b", "c");
+String[] array = list.toArray(new String[0]);
+```
+
+---
+
+## 📦 How to create an EasyHttpClient
+There are 2 ways to create an `EasyHttpClient` client:
+- Using the `defaultClient()` static method:
+```java
+EasyHttpClient client = EasyHttpClient.defaultClient();
+```
+- Using the builder that allows to set some custom options:
+```java
+EasyHttpClient client = EasyHttpClient.builder()
+        .connectTimeout(Duration.ofSeconds(5))
+        .build();
+```
+
+#### List of the builder options:
+- .serializer(`EasySerializer`)
+- .connectTimeout(`Duration`)
+- .followRedirects(`HttpClient.Redirect`)
+- .proxy(`ProxySelector`)
+- .sslContext(`SSLContext`)
+- .sslParameters(`SSLParameters`)
+- .authenticator(`Authenticator`)
+- .version(`HttpClient.Version`)
+- .execution(`Executor`)
+- .cookieHandler(`CookieHandler`)
+
+---
+
 ## ⚡ Executing the HTTP Call
-### Synchronous Call: `send`
-This method sends the request and returns an HttpResponse<String> containing the response body.
+### Synchronous call: `send`
+The method `send(EasyHttpRequest)` executes the HTTP call and returns a `HttpResponse<String>` with the response body as a String.
 ```java
 HttpResponse<String> response = new EasyHttpClient().send(request);
+```
+
+It's also possible to call the method `send(EasyHttpRequest, Class)` to specify the type of the expected response. Here's a few examples:
+```java
+HttpResponse<SampleResponse> response = new EasyHttpClient().send(request, SampleResponse.class);
+HttpResponse<SampleResponse[]> response = new EasyHttpClient().send(request, SampleResponse[].class);
+HttpResponse<byte[]> response = new EasyHttpClient().send(request, byte[].class);
 ```
 
 ---
 
 ### Asynchronous Call: `sendAsync`
-This method sends the request asynchronously and returns a `CompletableFuture`. \
-In the following example we wait for the response with the methd `get()`, but you can of course decide to just make the Http call and ignore it.
+This method sends an asynchronous request and returns a `CompletableFuture<HttpResponse<String>>`.
 ```java
 CompletableFuture<HttpResponse<String>> completableFuture = new EasyHttpClient().sendAsync(request);
-HttpResponse<String> response = completableFuture.get();
+```
+
+As for the `send()`, there's also a `sendAsync(EasyHttpRequest, Class)` that accepts the class type of the response expected.
+```java
+CompletableFuture<HttpResponse<SampleResponse>> response = new EasyHttpClient().sendAsync(request, SampleResponse.class);
+CompletableFuture<HttpResponse<SampleResponse[]>> response = new EasyHttpClient().sendAsync(request, SampleResponse[].class);
+CompletableFuture<HttpResponse<byte[]>> response = new EasyHttpClient().sendAsync(request, byte[].class);
 ```
 
 ---
 
-### 🔄 Supported HTTP Methods
-Currently supported HTTP methods:
+### Supported HTTP Methods
 - GET
 - POST
 - PUT
@@ -77,8 +182,11 @@ Currently supported HTTP methods:
 ---
 
 ## 🛑 Exceptions
-- `HttpCallException`: instead of propagating the checked exceptions thrown by `HttpClient.send()` (such as `IOException` and `InterruptedException`), `EasyHttpClient` catches them and wraps them into a new unchecked exception.
-- `MalformedUriException`: the URI creation throws an `IllegalArgumentException`. That is now wrapped into a more descriptive exception for more clarity and better debugging.
+- `HttpCallException` — instead of propagating the checked exceptions thrown by `HttpClient.send()` (such as `IOException` and `InterruptedException`), `EasyHttpClient` catches them and wraps them into a new unchecked exception.
+- `MalformedUriException` — the URI creation throws an `IllegalArgumentException`. That is now wrapped into a more descriptive exception for more clarity and better debugging.
+- `FileNotFoundRuntimeException` — if the request input is read from a file and the file can't be found, this exception is thrown.
+- `SerializationException` — exception thrown when there's an error in the serialization process.
+- `DeserializationException` — exception thrown when there's an error in the deserialization process.
 
 ---
 

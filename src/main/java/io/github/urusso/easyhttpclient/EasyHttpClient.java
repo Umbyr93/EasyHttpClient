@@ -2,54 +2,115 @@ package io.github.urusso.easyhttpclient;
 
 import io.github.urusso.easyhttpclient.exception.HttpCallException;
 import io.github.urusso.easyhttpclient.exception.MalformedUriException;
+import io.github.urusso.easyhttpclient.interfaces.EasySerializer;
+import io.github.urusso.easyhttpclient.serializer.EasyJacksonSerializer;
+import io.github.urusso.easyhttpclient.utils.EasyBodyHandler;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLParameters;
 import java.io.IOException;
-import java.net.URI;
-import java.net.URLEncoder;
+import java.net.*;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 public class EasyHttpClient {
     private final HttpClient httpClient;
+    private final EasyBodyHandler easyBodyHandler;
 
-    public EasyHttpClient() {
+    private EasyHttpClient(EasySerializer serializer) {
         this.httpClient = HttpClient.newHttpClient();
+        this.easyBodyHandler = new EasyBodyHandler(serializer);
+    }
+
+    private EasyHttpClient(Duration connectTimeout, HttpClient.Redirect followRedirects, ProxySelector proxy,
+                           SSLContext sslContext, SSLParameters sslParameters, Authenticator authenticator,
+                           HttpClient.Version version, Executor executor, CookieHandler cookieHandler,
+                           EasySerializer serializer) {
+
+        var clientBuilder = HttpClient.newBuilder();
+
+        if(connectTimeout != null)
+            clientBuilder.connectTimeout(connectTimeout);
+        if(followRedirects != null)
+            clientBuilder.followRedirects(followRedirects);
+        if(proxy != null)
+            clientBuilder.proxy(proxy);
+        if(sslContext != null)
+            clientBuilder.sslContext(sslContext);
+        if(sslParameters != null)
+            clientBuilder.sslParameters(sslParameters);
+        if(authenticator != null)
+            clientBuilder.authenticator(authenticator);
+        if(version != null)
+            clientBuilder.version(version);
+        if(executor != null)
+            clientBuilder.executor(executor);
+        if(cookieHandler != null)
+            clientBuilder.cookieHandler(cookieHandler);
+
+        this.httpClient = clientBuilder.build();
+        this.easyBodyHandler = new EasyBodyHandler(serializer);
+    }
+
+    public static EasyHttpClient defaultClient() {
+        return new EasyHttpClient(new EasyJacksonSerializer());
     }
 
     /**
-     * The method that executes the HTTP call synchronously
+     * Default method to execute a synchronous HTTP call that has String for the response body
      *
      * @param easyReq {@link EasyHttpRequest} containing all the info to make the call
      * @return {@link HttpResponse} containing a String with the body received
      */
     public HttpResponse<String> send(EasyHttpRequest easyReq) {
+        return send(easyReq, String.class);
+    }
+
+    /**
+     * The method that executes a synchronous HTTP call
+     *
+     * @param easyReq {@link EasyHttpRequest} containing all the info to make the call
+     * @return {@link HttpResponse} containing a String with the body received
+     */
+    public <T> HttpResponse<T> send(EasyHttpRequest easyReq, Class<T> responseClass) {
         HttpRequest request = convertRequest(easyReq);
 
         try {
-            return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            var bodyHandler = easyBodyHandler.getResponseBodyHandler(responseClass);
+            return httpClient.send(request, bodyHandler);
         } catch (IOException | InterruptedException e) {
             throw new HttpCallException(e);
         }
     }
 
     /**
-     *
-     *
-     * @param easyReq {@link EasyHttpRequest} containing all the info to make the call
-     */
-    /**
-     * The method that executes the HTTP call asynchronously
+     * Default method to execute a asynchronous HTTP call that has String for the response body
      *
      * @param easyReq {@link EasyHttpRequest} containing all the info to make the call
      * @return {@link CompletableFuture} of the {@link HttpResponse}
      */
     public CompletableFuture<HttpResponse<String>> sendAsync(EasyHttpRequest easyReq) {
+        return sendAsync(easyReq, String.class);
+    }
+
+    /**
+     * The method that executes an asynchronous HTTP call
+     *
+     * @param easyReq {@link EasyHttpRequest} containing all the info to make the call
+     * @return {@link CompletableFuture} of the {@link HttpResponse}
+     */
+    public <T> CompletableFuture<HttpResponse<T>> sendAsync(EasyHttpRequest easyReq, Class<T> responseClass) {
         HttpRequest request = convertRequest(easyReq);
-        return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString());
+
+        var bodyHandler = easyBodyHandler.getResponseBodyHandler(responseClass);
+        return httpClient.sendAsync(request, bodyHandler);
     }
 
     /**
@@ -83,8 +144,24 @@ public class EasyHttpClient {
         String url = removeEndSlashes(request.getUrl());
         url = replacePathParams(url, request.getPathParams());
         url = addQueryParams(url, request.getQueryParams());
+        url = addFragment(url, request.getFragment());
 
         return URI.create(url);
+    }
+
+    /**
+     * Add fragment to the URL, like
+     *
+     * @param url String to manipulate
+     * @param fragment String fragment to add
+     * @return fixed String URL
+     */
+    private static String addFragment(String url, String fragment) {
+        if(fragment != null && !fragment.isBlank()) {
+            String encoded = encode(fragment);
+            return url.concat("#").concat(encoded);
+        }
+        return url;
     }
 
     /**
@@ -108,7 +185,7 @@ public class EasyHttpClient {
     /**
      * Replaces path params added in the URL string with the pathParams map
      *
-     * @param url        String to manipulate
+     * @param url String to manipulate
      * @param pathParams {@link Map] containing the key to replace and the value to replace it with
      * @return String URL with path params replaced
      */
@@ -124,7 +201,7 @@ public class EasyHttpClient {
     /**
      * Replaces path params added in the URL string with the pathParams map
      *
-     * @param url         String to manipulate
+     * @param url String to manipulate
      * @param queryParams {@link Map} containing the key-value params to add
      * @return String URL with path params replaced
      */
@@ -152,18 +229,20 @@ public class EasyHttpClient {
      * @param easyReq {@link EasyHttpRequest}
      */
     private void setHttpMethod(HttpRequest.Builder builder, EasyHttpRequest easyReq) {
+        var bodyPublisher = easyBodyHandler.getRequestBodyPublisher(easyReq.getBody());
+
         switch (easyReq.getHttpMethod()) {
             case GET:
                 builder.GET();
                 break;
             case POST:
-                builder.POST(HttpRequest.BodyPublishers.ofString(easyReq.getJsonBody()));
+                builder.POST(bodyPublisher);
                 break;
             case PUT:
-                builder.PUT(HttpRequest.BodyPublishers.ofString(easyReq.getJsonBody()));
+                builder.PUT(bodyPublisher);
                 break;
             case PATCH:
-                builder.method("PATCH", HttpRequest.BodyPublishers.ofString(easyReq.getJsonBody()));
+                builder.method("PATCH", bodyPublisher);
                 break;
             case DELETE:
                 builder.DELETE();
@@ -196,5 +275,84 @@ public class EasyHttpClient {
      */
     private static String encode(String param) {
         return URLEncoder.encode(param, StandardCharsets.UTF_8).replace("+", "%20");
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    //*******************************************
+    //***************** BUILDER *****************
+    //*******************************************
+    public static class Builder {
+        private EasySerializer serializer;
+        private Duration connectTimeout;
+        private HttpClient.Redirect followRedirects;
+        private ProxySelector proxy;
+        private SSLContext sslContext;
+        private SSLParameters sslParameters;
+        private Authenticator authenticator;
+        private HttpClient.Version version;
+        private Executor executor;
+        private CookieHandler cookieHandler;
+
+        private Builder() {}
+
+        public Builder serializer(EasySerializer serializer) {
+            this.serializer = serializer;
+            return this;
+        }
+
+        public Builder connectTimeout(Duration connectTimeout) {
+            this.connectTimeout = connectTimeout;
+            return this;
+        }
+
+        public Builder followRedirects(HttpClient.Redirect followRedirects) {
+            this.followRedirects = followRedirects;
+            return this;
+        }
+
+        public Builder proxy(ProxySelector proxy) {
+            this.proxy = proxy;
+            return this;
+        }
+
+        public Builder sslContext(SSLContext sslContext) {
+            this.sslContext = sslContext;
+            return this;
+        }
+
+        public Builder sslParameters(SSLParameters sslParameters) {
+            this.sslParameters = sslParameters;
+            return this;
+        }
+
+        public Builder authenticator(Authenticator authenticator) {
+            this.authenticator = authenticator;
+            return this;
+        }
+
+        public Builder version(HttpClient.Version version) {
+            this.version = version;
+            return this;
+        }
+
+        public Builder executor(Executor executor) {
+            this.executor = executor;
+            return this;
+        }
+
+        public Builder cookieHandler(CookieHandler cookieHandler) {
+            this.cookieHandler = cookieHandler;
+            return this;
+        }
+
+        public EasyHttpClient build() {
+            serializer = Objects.requireNonNullElseGet(serializer, EasyJacksonSerializer::new);
+
+            return new EasyHttpClient(connectTimeout, followRedirects, proxy, sslContext, sslParameters, authenticator,
+                    version, executor, cookieHandler, serializer);
+        }
     }
 }
